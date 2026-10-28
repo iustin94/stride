@@ -93,8 +93,14 @@ namespace Stride.Rendering.UI
             if (graphicsDevice == null)
                 return new Ray(new Vector3(float.NegativeInfinity), new Vector3(0, 1, 0));
 
-            screenPos.X *= graphicsDevice.Presenter.BackBuffer.Width;
-            screenPos.Y *= graphicsDevice.Presenter.BackBuffer.Height;
+            // Pointer positions are normalized in display orientation; under presenter rotation the back buffer
+            // is the unrotated surface, so scale by its size as seen on the display (the picking viewport's frame).
+            var presenter = graphicsDevice.Presenter;
+            var swapsAxes = presenter.SurfaceRotation.SwapsAxes();
+            var displayWidth = swapsAxes ? presenter.BackBuffer.Height : presenter.BackBuffer.Width;
+            var displayHeight = swapsAxes ? presenter.BackBuffer.Width : presenter.BackBuffer.Height;
+            screenPos.X *= displayWidth;
+            screenPos.Y *= displayHeight;
 
             var unprojectedNear = viewport.Unproject(new Vector3(screenPos, 0.0f), ref worldViewProj);
 
