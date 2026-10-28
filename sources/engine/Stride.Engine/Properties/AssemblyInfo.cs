@@ -34,3 +34,4 @@ using System.Runtime.InteropServices;
 [assembly: InternalsVisibleTo("Stride.Engine.Tests" + Stride.PublicKeys.Default)]
 [assembly: InternalsVisibleTo("Stride.Engine.NoAssets.Tests" + Stride.PublicKeys.Default)]
 [assembly: InternalsVisibleTo("Stride.VirtualReality" + Stride.PublicKeys.Default)]
+[assembly: InternalsVisibleTo("Stride.UI" + Stride.PublicKeys.Default)]
