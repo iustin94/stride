@@ -126,7 +126,7 @@ namespace Stride.Rendering.Compositing
             var surfaceRotation = context.Tags.Get(GraphicsCompositor.IsPresenterPass)
                 ? context.GraphicsDevice?.Presenter?.SurfaceRotation ?? SurfaceRotation.Identity
                 : SurfaceRotation.Identity;
-            var rotatedAxis = surfaceRotation is SurfaceRotation.Rotate90 or SurfaceRotation.Rotate270;
+            var rotatedAxis = surfaceRotation.SwapsAxes();
 
             // Setup viewport size
             var aspectRatio = rotatedAxis
@@ -151,7 +151,7 @@ namespace Stride.Rendering.Compositing
 
             if (surfaceRotation != SurfaceRotation.Identity)
             {
-                var rot = GetSurfaceRotationMatrix(surfaceRotation);
+                var rot = surfaceRotation.ToClipSpaceMatrix();
                 Matrix.Multiply(ref renderView.Projection, ref rot, out renderView.Projection);
             }
 
@@ -160,26 +160,5 @@ namespace Stride.Rendering.Compositing
 
             Matrix.Multiply(ref renderView.View, ref renderView.Projection, out renderView.ViewProjection);
         }
-
-        // Clip-space rotation per VK_SURFACE_TRANSFORM_*_BIT_KHR (row-major).
-        private static Matrix GetSurfaceRotationMatrix(SurfaceRotation rotation) => rotation switch
-        {
-            SurfaceRotation.Rotate90 => new Matrix(
-                 0, -1, 0, 0,
-                 1,  0, 0, 0,
-                 0,  0, 1, 0,
-                 0,  0, 0, 1),
-            SurfaceRotation.Rotate180 => new Matrix(
-                -1,  0, 0, 0,
-                 0, -1, 0, 0,
-                 0,  0, 1, 0,
-                 0,  0, 0, 1),
-            SurfaceRotation.Rotate270 => new Matrix(
-                 0,  1, 0, 0,
-                -1,  0, 0, 0,
-                 0,  0, 1, 0,
-                 0,  0, 0, 1),
-            _ => Matrix.Identity,
-        };
     }
 }

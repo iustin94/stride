@@ -10,6 +10,7 @@ using Stride.Engine;
 using Stride.Games;
 using Stride.Graphics;
 using Stride.Input;
+using Stride.Rendering.Compositing;
 using Stride.UI;
 using Stride.UI.Renderers;
 
@@ -108,6 +109,15 @@ namespace Stride.Rendering.UI
             renderingContext.Time = drawTime;
             renderingContext.RenderTarget = context.CommandList.RenderTargets[0]; // TODO: avoid hardcoded index 0
 
+            // Presenter rotation (Android Vulkan pre-rotation), as in SceneCameraRenderer: lay out and pick in display
+            // orientation, draw folded into the rotated surface.
+            var surfaceRotation = context.RenderContext.Tags.Get(GraphicsCompositor.IsPresenterPass)
+                ? context.GraphicsDevice?.Presenter?.SurfaceRotation ?? SurfaceRotation.Identity
+                : SurfaceRotation.Identity;
+            var surfaceRotationMatrix = surfaceRotation.ToClipSpaceMatrix();
+            var renderViewport = context.CommandList.Viewport;
+            var displayViewport = surfaceRotation.SwapsAxes() ? new Viewport(renderViewport.X, renderViewport.Y, renderViewport.Height, renderViewport.Width) : renderViewport;
+
             // Prepare content required for Picking and MouseOver events
             PickingPrepare();
 
@@ -144,7 +154,9 @@ namespace Stride.Rendering.UI
                 if (renderObject.IsFullScreen)
                 {
                     //var targetSize = viewportSize;
-                    var targetSize = new Vector2(renderingContext.RenderTarget.Width, renderingContext.RenderTarget.Height);
+                    var targetSize = surfaceRotation.SwapsAxes()
+                        ? new Vector2(renderingContext.RenderTarget.Height, renderingContext.RenderTarget.Width)
+                        : new Vector2(renderingContext.RenderTarget.Width, renderingContext.RenderTarget.Height);
 
                     // update the virtual resolution of the renderer
                     if (renderObject.ResolutionStretch == ResolutionStretch.FixedWidthAdaptableHeight)
@@ -162,11 +174,12 @@ namespace Stride.Rendering.UI
                 }
 
                 uiElementState.VirtualResolution = virtualResolution;
+                uiElementState.UpdateDrawMatrix(ref surfaceRotationMatrix);
 
                 // Check if the current UI component is being picked based on the current ViewParameters (used to draw this element)
                 using (Profiler.Begin(UIProfilerKeys.TouchEventsUpdate))
                 {
-                    PickingUpdate(uiElementState.RenderObject, uiElementState.VirtualResolution, context.CommandList.Viewport, ref uiElementState.WorldViewProjectionMatrix, drawTime, ref loopedElementUnderMouseCursor);
+                    PickingUpdate(uiElementState.RenderObject, uiElementState.VirtualResolution, displayViewport, ref uiElementState.WorldViewProjectionMatrix, drawTime, ref loopedElementUnderMouseCursor);
 
                     // only update result element, when this one has a value
                     if (loopedElementUnderMouseCursor != null)
@@ -189,7 +202,7 @@ namespace Stride.Rendering.UI
 
                 // update the rendering context values specific to this element
                 renderingContext.Resolution = virtualResolution;
-                renderingContext.ViewProjectionMatrix = uiElementState.WorldViewProjectionMatrix;
+                renderingContext.ViewProjectionMatrix = uiElementState.DrawMatrix;
                 renderingContext.DepthStencilBuffer = renderObject.IsFullScreen ? scopedDepthBuffer : context.CommandList.DepthStencilBuffer;
                 renderingContext.ShouldSnapText = renderObject.SnapText && renderObject.IsBillboard && (renderObject.IsFixedSize || renderObject.IsFullScreen);
 
@@ -205,7 +218,7 @@ namespace Stride.Rendering.UI
                     transformedVirtualHeight[i] = virtualHeight[1] * uiElementState.WorldViewProjectionMatrix[4 + i] + uiElementState.WorldViewProjectionMatrix[12 + i];
                 }
 
-                var viewportSize = context.CommandList.Viewport.Size;
+                var viewportSize = displayViewport.Size;
                 var projectedOrigin = virtualOrigin.XY() / virtualOrigin.W;
                 var projectedVirtualWidth = viewportSize * (transformedVirtualWidth.XY() / transformedVirtualWidth.W - projectedOrigin);
                 var projectedVirtualHeight = viewportSize * (transformedVirtualHeight.XY() / transformedVirtualHeight.W - projectedOrigin);
@@ -254,10 +267,10 @@ namespace Stride.Rendering.UI
 
                 // start the image draw session
                 renderingContext.StencilTestReferenceValue = 0;
-                batch.Begin(context.GraphicsContext, ref uiElementState.WorldViewProjectionMatrix, BlendStates.AlphaBlend, samplerState, null, uiSystem.KeepStencilValueState, renderingContext.StencilTestReferenceValue);
+                batch.Begin(context.GraphicsContext, ref uiElementState.DrawMatrix, BlendStates.AlphaBlend, samplerState, null, uiSystem.KeepStencilValueState, renderingContext.StencilTestReferenceValue);
 
                 // Render the UI elements in the final render target
-                RecursiveDrawWithClipping(context, rootElement, ref uiElementState.WorldViewProjectionMatrix, samplerState);
+                RecursiveDrawWithClipping(context, rootElement, ref uiElementState.DrawMatrix, samplerState);
 
                 // end the image draw session
                 batch.End();
@@ -353,13 +366,21 @@ namespace Stride.Rendering.UI
         {
             public readonly RenderUIElement RenderObject;
             public Matrix WorldViewProjectionMatrix;
+            public Matrix DrawMatrix;
             public Vector3 VirtualResolution;
 
             public UIElementState(RenderUIElement renderObject)
             {
                 RenderObject = renderObject;
                 WorldViewProjectionMatrix = Matrix.Identity;
+                DrawMatrix = Matrix.Identity;
                 VirtualResolution = renderObject.Resolution;
+            }
+
+            /// <summary>The matrix the element is drawn with: <see cref="WorldViewProjectionMatrix"/> folded into the surface rotation.</summary>
+            public void UpdateDrawMatrix(ref Matrix surfaceRotationMatrix)
+            {
+                Matrix.Multiply(ref WorldViewProjectionMatrix, ref surfaceRotationMatrix, out DrawMatrix);
             }
 
             public void Update(RenderUIElement renderObject, CameraComponent camera)
