@@ -7,7 +7,8 @@
       "..\\sources\\engine\\Stride.Engine.NoAssets.Tests\\Stride.Engine.NoAssets.Tests.csproj",
       "..\\sources\\engine\\Stride.Input.Tests\\Stride.Input.Tests.csproj",
       "..\\sources\\engine\\Stride.Navigation.Tests\\Stride.Navigation.Tests.csproj",
-      "..\\sources\\engine\\Stride.Particles.Tests\\Stride.Particles.Tests.csproj"
+      "..\\sources\\engine\\Stride.Particles.Tests\\Stride.Particles.Tests.csproj",
+      "..\\sources\\engine\\Stride.Video.Tests\\Stride.Video.Tests.csproj"
     ]
   }
 }
