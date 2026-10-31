@@ -17,22 +17,32 @@ namespace Stride.Video.FFmpeg
             : base(pStream, media)
         {
             var pCodecpar = pStream->codecpar;
-            var framerateRatio = pCodecpar->framerate;
-
-            // HOTFIX (#95)
-            if (framerateRatio.den == 0)
-            {
-                FPS = 0;
-                FrameDuration = TimeSpan.Zero;
-            }
-            else
-            {
-                FPS = Convert.ToDouble(framerateRatio.num) / Convert.ToDouble(framerateRatio.den);
-                FrameDuration = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / Convert.ToInt64(FPS));
-            }
+            AVRational frameRate = DeclaredFrameRate(pStream);
+            long ticksPerFrame = TimeSpan.TicksPerSecond * frameRate.den / frameRate.num;
+            FPS = (double)frameRate.num / frameRate.den;
+            FrameDuration = TimeSpan.FromTicks(ticksPerFrame);
             PixelFormat = (AVPixelFormat)pCodecpar->format;
             Height = pCodecpar->height;
             Width = pCodecpar->width;
+        }
+
+        private static AVRational DeclaredFrameRate(AVStream* pStream)
+        {
+            AVRational[] declarations = [pStream->codecpar->framerate, pStream->avg_frame_rate, pStream->r_frame_rate];
+            foreach (AVRational declaration in declarations)
+            {
+                if (IsAFrameRate(declaration))
+                    return declaration;
+            }
+
+            throw new UnknownVideoFrameRateException(pStream->index);
+        }
+
+        private static bool IsAFrameRate(AVRational declaration)
+        {
+            bool CountsFrames() => declaration.num > 0;
+            bool HasATimeUnit() => declaration.den > 0;
+            return CountsFrames() && HasATimeUnit();
         }
 
         /// <summary>

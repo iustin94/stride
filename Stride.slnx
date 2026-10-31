@@ -238,6 +238,7 @@
   <Folder Name="/80-Plugins/Video/">
     <Project Path="sources/plugins/Video/Stride.Video.Assets/Stride.Video.Assets.csproj" />
     <Project Path="sources/plugins/Video/Stride.Video.Editor/Stride.Video.Editor.csproj" />
+    <Project Path="sources/plugins/Video/Stride.Video.Tests/Stride.Video.Tests.csproj" />
     <Project Path="sources/plugins/Video/Stride.Video/Stride.Video.csproj" />
   </Folder>
   <Folder Name="/80-Plugins/Voxels/">
