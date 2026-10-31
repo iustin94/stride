@@ -125,6 +125,7 @@
     <Project Path="../sources/engine/Stride.Particles.Tests/Stride.Particles.Tests.csproj" />
     <Project Path="../sources/engine/Stride.Physics.Tests/Stride.Physics.Tests.csproj" />
     <Project Path="../sources/engine/Stride.UI.Tests/Stride.UI.Tests.csproj" />
+    <Project Path="../sources/engine/Stride.Video.Tests/Stride.Video.Tests.csproj" />
   </Folder>
   <Folder Name="/30-CoreDesign/">
     <Project Path="../sources/buildengine/Stride.Core.BuildEngine.Common/Stride.Core.BuildEngine.Common.csproj" />
